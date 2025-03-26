@@ -3,6 +3,8 @@ class DropBoxController{
     constructor(){
       
       //Propriedades
+      this.onselectionchange = new Event('selectionchange');
+
       this.btnSendFileEl = document.querySelector('#btn-send-file');
       this.inputFilesEl = document.querySelector('#files');
       this.snackModalEl = document.querySelector('#react-snackbar-root');
@@ -10,6 +12,9 @@ class DropBoxController{
       this.namefileEl = this.snackModalEl.querySelector(".filename");
       this.timeleftEl = this.snackModalEl.querySelector(".timeleft");
       this.listFilesEl  = document.querySelector("#list-of-files-and-directories");
+      this.btnNewFolder = document.querySelector('#btn-new-folder');
+      this.btnRename = document.querySelector('#btn-rename');
+      this.btnDelete = document.querySelector('#btn-delete');
 
       //Metodos de início
       this.connectFirebase();
@@ -36,7 +41,34 @@ class DropBoxController{
         return firebase.database().ref("files");
     }
 
+   
+    getSelection() {
+      return this.listFilesEl.querySelectorAll('.selected');
+    }
+
     initEvents(){
+      //Evento que controla o menu de opções do usuário, com base no que aparece.
+      this.listFilesEl.addEventListener('selectionchange', e => {
+          switch(this.getSelection().length){
+            //Se não houver nenhum item/arquivo(li) selecionado
+            case 0:
+              this.btnDelete.style.setProperty('display', 'none');
+              this.btnRename.style.setProperty('display', 'none');
+            break;
+            
+            //Se houver pelo menos 1 item/arquivo(li) selecionado
+            case 1: 
+              this.btnDelete.style.setProperty('display', 'block', 'important');
+              this.btnRename.style.setProperty('display', 'block', 'important');
+            break;
+
+            default:
+              this.btnDelete.style.setProperty('display', 'block', 'important');
+              this.btnRename.style.setProperty('display', 'none');
+            break;
+
+          }
+       });
         //Adiciona um evento de clique no botão Upload
         this.btnSendFileEl.addEventListener('click', event =>{
             this.inputFilesEl.click();
@@ -63,6 +95,8 @@ class DropBoxController{
             this.showUploadBar();
 
         });
+
+
     }
 
     upLoadComplete(){
@@ -322,6 +356,51 @@ class DropBoxController{
             `;
         }
       }
+
+      initEventsLi(li) {
+        li.addEventListener('click', e => {
+     
+          //Se o shift estiver precionado, selecione todos os anteoriores ao ultimo elemento.
+          if (e.shiftKey) {
+            let firstLi = this.listFilesEl.querySelector('.selected');
+    
+            if (firstLi) {
+              let indexStart;
+              let indexEnd;
+              //Pega todos os lis presentes(childNodes) usando o pai(parentElement)
+              let lis = li.parentElement.childNodes;
+    
+              lis.forEach((el, index) => {
+                if (firstLi === el) indexStart = index;
+                if (li === el) indexEnd = index;
+              })
+              
+              let index = [indexStart, indexEnd].sort()
+    
+              lis.forEach((el, i) => {
+                if (i >= index[0] && i <= index[1]) {
+                  el.classList.add('selected')
+                }
+              });
+              this.listFilesEl.dispatchEvent(this.onselectionchange);
+
+              return true;
+            }
+          }
+  
+         //Se o control não estiver pressionado, seleciona somente o que foi clicado e tira todos os outros
+          if (!e.ctrlKey) {
+            this.listFilesEl.querySelectorAll('li.selected').forEach(el => {
+              el.classList.remove('selected')
+            })
+          }
+    
+          li.classList.toggle('selected');
+         //Usando o metodo dispatchEvent para disparar um evento(li, click) de um evento(selectionchange) 
+         this.listFilesEl.dispatchEvent(this.onselectionchange);
+        })
+      }
+
     
       //Construindo o li  e Retornando o icone correspondente ao arquivo enviado
       getFileView(file, key) {
@@ -334,25 +413,33 @@ class DropBoxController{
             `
                 ${this.getFileIconView(file)}
                 <div class="name text-center">${file.name}s</div>
-            `
+            `;
+
+        this.initEventsLi(li);
         //Retorna o elemento li criado.
         return li
       }
 
-      readFiles(){
-        this.getFirebaseRef().on('value', snapshot =>{
 
-            //Limpar o conteúdo para popula-lo corretamente
-            this.listFilesEl.innerHTML = '';
+
+      readFiles(){  
+
+        this.getFirebaseRef().on('value', snapshot =>{
+             //Limpar o conteúdo para popula-lo corretamente
+              this.listFilesEl.innerHTML = '';
             //Para cade item(imagem, video, txt etc) encontrado, é criado uma li dentro de ul com as propriedas vindas do banco
-            snapshot.forEach(snapshotItem =>{
-                //Chave única de identificação do objeto
-                let key = snapshotItem.key;
-                //Dados do objeto
-                let data = snapshotItem.val();
-                //Adiciona o li que será criado em getFileView no ul(listFilesEl).
-                this.listFilesEl.appendChild(this.getFileView(data, key))
-            })
+            if (snapshot.exists()) { 
+              snapshot.forEach(snapshotItem =>{
+                  //Chave única de identificação do objeto
+                  let key = snapshotItem.key;
+                  //Dados do objeto
+                  let data = snapshotItem.val();
+                  //Adiciona o li que será criado em getFileView no ul(listFilesEl).
+                  this.listFilesEl.appendChild(this.getFileView(data, key))
+              });
+          }else{
+            this.listFilesEl.innerHTML = '<li class="archiveMessageStyle" >Você não possui arquivos.</li>';
+          }
 
         });
       }
