@@ -9,10 +9,12 @@ class DropBoxController{
       this.progressBarEl = this.snackModalEl.querySelector(".mc-progress-bar-fg");
       this.namefileEl = this.snackModalEl.querySelector(".filename");
       this.timeleftEl = this.snackModalEl.querySelector(".timeleft");
+      this.listFilesEl  = document.querySelector("#list-of-files-and-directories");
 
       //Metodos de início
       this.connectFirebase();
       this.initEvents();  
+      this.readFiles();
     }
 
     connectFirebase(){
@@ -321,14 +323,38 @@ class DropBoxController{
         }
       }
     
-      //Retornando o icone correspondente ao arquivo enviado
-      getFileView(file) {
-        return `
-          <li>
-            ${this.getFileIconView(file)}
-            <div class="name text-center">${file.name}s</div>
-          </li>
-        `
+      //Construindo o li  e Retornando o icone correspondente ao arquivo enviado
+      getFileView(file, key) {
+        //Cria o elemento li
+        let li = document.createElement("li");
+        //Popula a key dele que vem do banco no dataset
+        li.dataset.key = key;
+        //Popula o conteúdo de li
+        li.innerHTML = 
+            `
+                ${this.getFileIconView(file)}
+                <div class="name text-center">${file.name}s</div>
+            `
+        //Retorna o elemento li criado.
+        return li
+      }
+
+      readFiles(){
+        this.getFirebaseRef().on('value', snapshot =>{
+
+            //Limpar o conteúdo para popula-lo corretamente
+            this.listFilesEl.innerHTML = '';
+            //Para cade item(imagem, video, txt etc) encontrado, é criado uma li dentro de ul com as propriedas vindas do banco
+            snapshot.forEach(snapshotItem =>{
+                //Chave única de identificação do objeto
+                let key = snapshotItem.key;
+                //Dados do objeto
+                let data = snapshotItem.val();
+                //Adiciona o li que será criado em getFileView no ul(listFilesEl).
+                this.listFilesEl.appendChild(this.getFileView(data, key))
+            })
+
+        });
       }
 
 }
