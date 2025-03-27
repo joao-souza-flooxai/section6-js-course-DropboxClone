@@ -43,7 +43,7 @@ class DropBoxController{
 
    
     getSelection() {
-      return this.listFilesEl.querySelectorAll('.selected');
+      return this.listFilesEl.querySelectorAll(".selected");
     }
 
     putFile(key, file){
@@ -51,7 +51,6 @@ class DropBoxController{
     }
 
     removeFile(key){
-      console.log("chegou no remove");
       this.getFirebaseRef().child(key).remove();
     }
 
@@ -60,7 +59,6 @@ class DropBoxController{
       this.getSelection().forEach((li) => {
         let file = JSON.parse(li.dataset.file);
         let key = li.dataset.key;
-        console.log(key);
         let formData = new FormData()
   
         formData.append('path', file.path);
@@ -74,17 +72,16 @@ class DropBoxController{
     }
 
     initEvents(){
-
       
       this.btnDelete.addEventListener("click", (e) => {
         this.removeTask()
           .then((responses) => {
-  
             responses.forEach(response => {
               if (response.fields.key) {
                 this.getFirebaseRef().child
                 (response.fields.key).remove();
               }
+
             })
           })
           .catch((err) => {
