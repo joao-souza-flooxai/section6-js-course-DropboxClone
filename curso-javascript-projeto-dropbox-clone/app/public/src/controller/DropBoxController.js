@@ -4,6 +4,7 @@ class DropBoxController{
       
       //Propriedades
       this.onselectionchange = new Event('selectionchange');
+      this.currentFolder = ['root'];
 
       this.btnSendFileEl = document.querySelector('#btn-send-file');
       this.inputFilesEl = document.querySelector('#files');
@@ -71,22 +72,33 @@ class DropBoxController{
       return Promise.all(promises);
     }
 
+    showRenameAndRemoveBtn(){
+      this.btnDelete.style.setProperty('display', 'none');
+      this.btnRename.style.setProperty('display', 'none');
+    }
+
+    hideRenameAndRemoveBtn(){
+      this.btnDelete.style.setProperty('display', 'block', 'important');
+      this.btnRename.style.setProperty('display', 'block', 'important');
+    }
+
     initEvents(){
       
       this.btnDelete.addEventListener("click", (e) => {
-        this.removeTask()
+        if(confirm("Deseja realmente excluir?")){
+          this.removeTask()
           .then((responses) => {
             responses.forEach(response => {
               if (response.fields.key) {
                 this.getFirebaseRef().child
                 (response.fields.key).remove();
               }
-
             })
           })
           .catch((err) => {
             console.log(err);
           });
+        }
       });
 
       this.btnRename.addEventListener('click', e=>{
@@ -103,19 +115,19 @@ class DropBoxController{
 
       });
 
+   
+
       //Evento que controla o menu de opções do usuário, com base no que aparece.
       this.listFilesEl.addEventListener('selectionchange', e => {
           switch(this.getSelection().length){
             //Se não houver nenhum item/arquivo(li) selecionado
             case 0:
-              this.btnDelete.style.setProperty('display', 'none');
-              this.btnRename.style.setProperty('display', 'none');
+              this.showRenameAndRemoveBtn();
             break;
             
             //Se houver pelo menos 1 item/arquivo(li) selecionado
             case 1: 
-              this.btnDelete.style.setProperty('display', 'block', 'important');
-              this.btnRename.style.setProperty('display', 'block', 'important');
+              this.hideRenameAndRemoveBtn()
             break;
 
             default:
@@ -124,6 +136,8 @@ class DropBoxController{
             break;
 
           }
+
+          
        });
         //Adiciona um evento de clique no botão Upload
         this.btnSendFileEl.addEventListener('click', event =>{
@@ -465,7 +479,7 @@ class DropBoxController{
          //Se o control não estiver pressionado, seleciona somente o que foi clicado e tira todos os outros
           if (!e.ctrlKey) {
             this.listFilesEl.querySelectorAll('li.selected').forEach(el => {
-              el.classList.remove('selected')
+              el.classList.remove('selected');
             })
           }
     
@@ -473,6 +487,35 @@ class DropBoxController{
          //Usando o metodo dispatchEvent para disparar um evento(li, click) de um evento(selectionchange) 
          this.listFilesEl.dispatchEvent(this.onselectionchange);
         })
+
+        let isSelecting = false; // Flag para saber se o usuário está segurando o botão esquerdo
+
+        this.listFilesEl.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Garante que é o botão esquerdo
+                isSelecting = true;
+
+                // Limpa a seleção anterior caso o usuário não esteja segurando Ctrl
+                if (!e.ctrlKey) {
+                    this.listFilesEl.querySelectorAll('li.selected').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                }
+            }
+        });
+
+        this.listFilesEl.addEventListener('mousemove', (e) => {
+            if (isSelecting) {
+                let li = e.target.closest('li'); // Pega o item atual
+                if (li) {
+                    li.classList.add('selected');
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isSelecting = false; // Para a seleção ao soltar o botão do mouse
+        });
+
       }
 
     
@@ -493,13 +536,12 @@ class DropBoxController{
 
         this.initEventsLi(li);
         //Retorna o elemento li criado.
-        return li
+        return li;
       }
 
 
 
       readFiles(){  
-
         this.getFirebaseRef().on('value', snapshot =>{
              //Limpar o conteúdo para popula-lo corretamente
               this.listFilesEl.innerHTML = '';
