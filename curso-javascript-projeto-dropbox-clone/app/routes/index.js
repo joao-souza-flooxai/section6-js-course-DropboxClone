@@ -9,6 +9,29 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
+router.get('/file', (req, res) => {
+  let path = './' + req.query.path;
+
+  if (fs.existsSync(path)) {
+
+    fs.readFile(path, (err, data) => {
+      if (err) {
+        console.log(err);
+        res.status(400).json({
+          error: err
+        });
+      } else {
+        res.status(200).end(data);
+      }
+    })
+
+  } else {
+    res.status(404).json({
+      error: 'File not found.'
+    })
+  }
+});
+
 router.delete("/file", (req,res)=>{
     //Aqui é definido o diretorio que o upload será recebido.
     let form = new formidable.IncomingForm({
@@ -30,9 +53,12 @@ router.delete("/file", (req,res)=>{
           else
             res.json({fields});
         });
-      }
+      }else{
+        res.status(404).json({
+          error: 'File not found.'
+        });
       
-    });
+    }});
   
 });
 
